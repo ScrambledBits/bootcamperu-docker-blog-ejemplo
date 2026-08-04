@@ -1,0 +1,57 @@
+# =============================================================================
+#  Imagen de la interfaz (versión con buenas prácticas)
+# =============================================================================
+#  Sirve exactamente lo mismo que el Dockerfile de al lado, pero añade tres
+#  cosas que sí quieres en producción:
+#
+#    1. Validar la configuración durante la construcción, no al arrancar.
+#    2. Correr como usuario sin privilegios, en un puerto no privilegiado.
+#    3. Un HEALTHCHECK que viaja dentro de la imagen.
+#
+#  Construir esta versión, desde la carpeta ui/:
+#      docker build -f Dockerfile.optimizado -t blog-ui:opt .
+# =============================================================================
+
+
+# ---------- Etapa 1: validar la configuración ----------
+# Esta etapa no produce ningún archivo para la imagen final. Su único trabajo es
+# fallar pronto: si el Caddyfile tiene una errata, la construcción se detiene
+# aquí. Sin esto, el error aparecería al arrancar el contenedor, cuando ya está
+# desplegado y con la clase mirando.
+FROM caddy:2.11.4-alpine AS validador
+
+COPY Caddyfile /etc/caddy/Caddyfile
+
+RUN caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+
+# ---------- Etapa 2: imagen final ----------
+FROM caddy:2.11.4-alpine AS runtime
+
+# Usuario sin privilegios. Los puertos por debajo del 1024 (como el 80) están
+# reservados a root en Linux, así que al dejar de ser root tenemos que mover el
+# servidor a un puerto alto. De ahí el 8080.
+RUN addgroup -S web && adduser -S web -G web
+
+# Copiamos el Caddyfile desde la etapa validada: así es imposible que la imagen
+# final acabe con una configuración distinta de la que se comprobó.
+COPY --from=validador --chown=web:web /etc/caddy/Caddyfile /etc/caddy/Caddyfile
+COPY --chown=web:web public/ /srv/
+
+# Caddy necesita escribir en estas dos carpetas (datos y configuración). Si el
+# usuario no puede, el contenedor arranca lleno de errores de permisos.
+# Este es el paso que más se olvida al pasar un contenedor a usuario no-root.
+RUN mkdir -p /data /config && chown -R web:web /data /config
+
+# El Caddyfile escucha en :80. En vez de mantener dos archivos casi idénticos,
+# cambiamos el puerto aquí con sed: una única fuente de verdad.
+RUN sed -i 's/^:80 {/:8080 {/' /etc/caddy/Caddyfile
+
+USER web
+
+EXPOSE 8080
+
+# wget viene incluido en Alpine (dentro de busybox), así que no instalamos nada.
+# --spider significa "solo comprueba que existe, no descargues el archivo".
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --spider -q http://127.0.0.1:8080/ || exit 1

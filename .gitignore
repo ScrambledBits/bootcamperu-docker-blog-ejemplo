@@ -1,0 +1,22 @@
+# Notas de trabajo, no forman parte del material de clase
+TODO.md
+
+# Python
+__pycache__/
+*.py[oc]
+.venv/
+build/
+dist/
+wheels/
+*.egg-info
+
+# Secretos y configuración local
+.env
+.env.local
+*.local
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,52 @@
+# =============================================================================
+#  Configuración de Caddy: servidor de archivos + puerta de entrada a la API
+# =============================================================================
+#  Este servicio hace dos trabajos a la vez:
+#
+#    1. Servir el HTML, el CSS y el JavaScript que ve el navegador.
+#    2. Reenviar a la API todo lo que empiece por /api.
+#
+#  El segundo trabajo es el que evita un dolor de cabeza clásico. Si el
+#  JavaScript llamara directamente a http://localhost:8000, el navegador vería
+#  dos orígenes distintos (puerto 9988 y puerto 8000) y bloquearía la petición
+#  por CORS. Al pasar todo por Caddy, para el navegador solo existe UN origen y
+#  el problema desaparece de raíz. Es también como se monta en producción.
+# =============================================================================
+
+# Escuchamos en el puerto 80 dentro del contenedor. Quién lo ve desde fuera y en
+# qué puerto se decide en el docker-compose.yml.
+:80 {
+	# El orden de los bloques handle no importa: Caddy siempre elige la ruta
+	# más específica que encaje, no la primera que aparece.
+
+	# ---- Peticiones a la API -------------------------------------------
+	handle /api/* {
+		# Quitamos el prefijo /api antes de reenviar.
+		# El navegador pide  /api/posts
+		# y la API recibe    /posts
+		# Así la API no necesita saber que vive detrás de un proxy.
+		uri strip_prefix /api
+
+		# "api" es el nombre del servicio en docker-compose.yml, no un dominio
+		# de internet ni una IP. Docker Compose monta un DNS interno en su red
+		# privada donde cada servicio responde por su nombre.
+		reverse_proxy api:8000
+	}
+
+	# ---- Todo lo demás: archivos estáticos ------------------------------
+	handle {
+		root * /srv
+		file_server
+	}
+
+	# Comprimimos las respuestas cuando el navegador dice que sabe
+	# descomprimirlas. Una línea, y el CSS y el JS viajan bastante más ligeros.
+	encode gzip
+
+	# Registro en formato legible para la clase. Con "docker compose logs -f ui"
+	# se ve en vivo cada petición, incluidas las que se van a la API.
+	log {
+		output stdout
+		format console
+	}
+}

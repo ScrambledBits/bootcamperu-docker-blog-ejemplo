@@ -1,0 +1,8 @@
+# Fuera del contexto de construcción de la interfaz.
+# Aquí hay poco que excluir porque no hay dependencias ni build: justo esa es
+# la gracia de servir archivos estáticos.
+
+Dockerfile
+Dockerfile.optimizado
+.dockerignore
+.DS_Store

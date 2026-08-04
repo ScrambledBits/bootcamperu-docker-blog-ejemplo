@@ -1,0 +1,564 @@
+/* =============================================================================
+   Estilos del blog · identidad visual de Bootcamperu
+   =============================================================================
+   Los colores y las tipografías no son inventados: son los tokens oficiales de
+   la marca, los mismos que se usan en las diapositivas y en los PDFs del
+   bootcamp.
+
+   La marca trabaja con dos acentos y una regla sencilla:
+     · teal  (T1) para lo conceptual y lo neutro
+     · naranja (T2) para lo operativo, lo accionable
+   El azul del logo es intocable y se reserva solo para el logo.
+   ============================================================================= */
+
+:root {
+  /* ---- Colores de la marca ---- */
+  --c-bg: #ffffff;
+  --c-text: #0f172a;
+  --c-text-soft: #334155;
+  --c-muted: #64748b;
+  --c-divider: #e2e8f0;
+  --c-surface: #f8fafc;
+
+  --c-t1: #0f766e; /* teal-700  · acento 1 */
+  --c-t1-bg: #f0fdfa;
+  --c-t1-soft: #ccfbf1;
+
+  --c-t2: #c2410c; /* orange-700 · acento 2 */
+  --c-t2-bg: #fff7ed;
+  --c-t2-soft: #fed7aa;
+
+  /* Azul del logo. Solo para el logo: nunca como color de interfaz. */
+  --c-brand-blue: #1647fb;
+
+  /* ---- Tipografías ---- */
+  --font-title: Georgia, Cambria, "Times New Roman", serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Calibri, sans-serif;
+  --font-code: "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* ---- Medidas ---- */
+  --radio: 10px;
+  --sombra: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+/* border-box hace que padding y borde cuenten DENTRO del ancho declarado.
+   Sin esto, un elemento de 300px con 16px de padding mide en realidad 332px y
+   todos los cálculos se descuadran. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--c-text);
+  /* El degradado teal muy suave del fondo es el mismo de la web del bootcamp */
+  background: linear-gradient(180deg, var(--c-t1-bg) 0%, var(--c-bg) 420px);
+  line-height: 1.6;
+}
+
+/* =============================================================================
+   Cabecera
+   ============================================================================= */
+
+.cabecera {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.cabecera__marca {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+}
+
+.cabecera__logo {
+  /* Fijamos solo el alto: el ancho se calcula solo y el logo no se deforma */
+  height: 34px;
+  width: auto;
+  display: block;
+}
+
+/* El "eyebrow": texto corto en mayúsculas sobre el título. En la marca va
+   siempre en el acento naranja y con las letras muy separadas. */
+.cabecera__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--c-t2);
+}
+
+.cabecera__titulo {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-title);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.15;
+  color: var(--c-t1);
+  font-weight: 700;
+}
+
+/* ---- Diagrama de la cadena de servicios ---- */
+
+.cadena {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+}
+
+.cadena__nodo {
+  font-family: var(--font-code);
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--c-divider);
+  background: var(--c-bg);
+  color: var(--c-muted);
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+/* Los nodos que sabemos que funcionan se pintan en teal. Los de api y db los
+   enciende app.js según lo que conteste /api/health/db. */
+.cadena__nodo--activo {
+  color: var(--c-t1);
+  border-color: var(--c-t1-soft);
+  background: var(--c-t1-bg);
+}
+
+.cadena__nodo--caido {
+  color: var(--c-t2);
+  border-color: var(--c-t2-soft);
+  background: var(--c-t2-bg);
+}
+
+.cadena__flecha {
+  color: var(--c-divider);
+}
+
+/* =============================================================================
+   Aviso de error
+   ============================================================================= */
+
+/* Un error es algo operativo, que hay que atender: por eso va en naranja (T2). */
+.aviso {
+  max-width: 1180px;
+  margin: 0 auto 1rem;
+  padding: 0.85rem 1.1rem;
+  border-left: 4px solid var(--c-t2);
+  border-radius: var(--radio);
+  background: var(--c-t2-bg);
+  color: var(--c-t2);
+  font-size: 0.9rem;
+}
+
+/* El atributo hidden del HTML pierde contra display:flex y otros display.
+   Esta regla se asegura de que hidden signifique realmente "no se ve". */
+[hidden] {
+  display: none !important;
+}
+
+/* =============================================================================
+   Rejilla principal: formulario a la izquierda, entradas a la derecha
+   ============================================================================= */
+
+.contenido {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+  display: grid;
+  /* 340px para el panel y el resto para las entradas */
+  grid-template-columns: 340px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* En pantallas estrechas pasamos a una sola columna. Una única media query:
+   el formulario queda arriba y las entradas debajo. */
+@media (max-width: 860px) {
+  .contenido {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* El panel se queda pegado al hacer scroll mientras haya sitio */
+  position: sticky;
+  top: 1.5rem;
+}
+
+@media (max-width: 860px) {
+  .panel {
+    position: static;
+  }
+}
+
+/* =============================================================================
+   Tarjetas
+   ============================================================================= */
+
+.tarjeta {
+  background: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radio);
+  padding: 1.25rem;
+  box-shadow: var(--sombra);
+}
+
+.tarjeta__titulo {
+  margin: 0 0 1rem;
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  color: var(--c-t1);
+}
+
+.tarjeta__titulo--pequeno {
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+
+/* =============================================================================
+   Formulario
+   ============================================================================= */
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.campo__etiqueta {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-soft);
+}
+
+.campo__control {
+  font-family: inherit;
+  font-size: 0.92rem;
+  color: var(--c-text);
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--c-divider);
+  border-radius: 8px;
+  background: var(--c-surface);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  width: 100%;
+}
+
+.campo__control:focus {
+  outline: none;
+  background: var(--c-bg);
+  border-color: var(--c-t1);
+  /* Anillo de foco visible: quitar el outline sin poner nada a cambio deja a
+     quien navega con teclado sin saber dónde está. */
+  box-shadow: 0 0 0 3px var(--c-t1-soft);
+}
+
+.campo__control--area {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.55;
+}
+
+/* Marca de campo inválido, la pinta app.js */
+.campo__control--error {
+  border-color: var(--c-t2);
+  background: var(--c-t2-bg);
+}
+
+/* =============================================================================
+   Botones
+   ============================================================================= */
+
+/* Publicar es LA acción de la página: acento naranja (operativo). */
+.boton {
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--c-t2);
+  border: 1px solid var(--c-t2);
+  border-radius: 8px;
+  padding: 0.6rem 1.1rem;
+  cursor: pointer;
+  transition: filter 0.15s, box-shadow 0.15s;
+}
+
+.boton:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.boton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--c-t2-soft);
+}
+
+.boton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Recargar es secundario: mismo tamaño, mucho menos peso visual. */
+.boton--suave {
+  color: var(--c-t1);
+  background: var(--c-bg);
+  border-color: var(--c-divider);
+  font-weight: 500;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.boton--suave:hover:not(:disabled) {
+  background: var(--c-t1-bg);
+  border-color: var(--c-t1-soft);
+}
+
+.boton--suave:focus-visible {
+  box-shadow: 0 0 0 3px var(--c-t1-soft);
+}
+
+.formulario__estado {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: 0.82rem;
+  color: var(--c-muted);
+}
+
+.formulario__estado--ok {
+  color: var(--c-t1);
+  font-weight: 600;
+}
+
+.formulario__estado--error {
+  color: var(--c-t2);
+  font-weight: 600;
+}
+
+/* =============================================================================
+   Panel de estado de los servicios
+   ============================================================================= */
+
+.tarjeta--estado {
+  background: var(--c-surface);
+}
+
+.estado__ayuda {
+  margin: 0 0 0.85rem;
+  font-size: 0.75rem;
+  color: var(--c-muted);
+}
+
+.estado__ayuda code {
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  background: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+
+.estado__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.estado__fila {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+}
+
+.estado__nombre {
+  font-family: var(--font-code);
+  color: var(--c-text-soft);
+  min-width: 2.2rem;
+}
+
+.estado__valor {
+  color: var(--c-muted);
+  font-size: 0.8rem;
+}
+
+.punto {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--c-divider);
+}
+
+.punto--ok {
+  background: var(--c-t1);
+  /* Halo suave para que se vea "encendido" */
+  box-shadow: 0 0 0 3px var(--c-t1-soft);
+}
+
+.punto--error {
+  background: var(--c-t2);
+  box-shadow: 0 0 0 3px var(--c-t2-soft);
+}
+
+.punto--esperando {
+  background: var(--c-muted);
+  animation: latido 1.2s ease-in-out infinite;
+}
+
+@keyframes latido {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Respetamos a quien ha pedido en su sistema que no haya animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  .punto--esperando {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   Lista de entradas
+   ============================================================================= */
+
+.entradas__cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.entradas__titulo {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  color: var(--c-t1);
+}
+
+.entradas__cuenta {
+  color: var(--c-muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.entrada {
+  background: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-left: 3px solid var(--c-t1);
+  border-radius: var(--radio);
+  padding: 1.1rem 1.25rem;
+  box-shadow: var(--sombra);
+}
+
+.entrada__titulo {
+  margin: 0 0 0.3rem;
+  font-family: var(--font-title);
+  font-size: 1.08rem;
+  color: var(--c-text);
+}
+
+.entrada__fecha {
+  margin: 0 0 0.6rem;
+  font-size: 0.74rem;
+  color: var(--c-muted);
+  font-family: var(--font-code);
+}
+
+.entrada__contenido {
+  margin: 0;
+  color: var(--c-text-soft);
+  font-size: 0.92rem;
+  /* Respeta los saltos de línea que escribió el usuario sin permitir HTML */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Entrada recién creada: destello teal que se apaga solo */
+.entrada--nueva {
+  animation: destello 1.6s ease-out;
+}
+
+@keyframes destello {
+  from {
+    background: var(--c-t1-bg);
+    border-left-color: var(--c-t2);
+  }
+  to {
+    background: var(--c-bg);
+    border-left-color: var(--c-t1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entrada--nueva {
+    animation: none;
+  }
+}
+
+.lista__cargando,
+.lista__vacio {
+  margin: 0;
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: var(--c-muted);
+  font-size: 0.9rem;
+  background: var(--c-bg);
+  border: 1px dashed var(--c-divider);
+  border-radius: var(--radio);
+}
+
+/* =============================================================================
+   Pie
+   ============================================================================= */
+
+.pie {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  border-top: 1px solid var(--c-divider);
+  text-align: center;
+}
+
+.pie p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--c-muted);
+}

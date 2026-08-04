@@ -1,0 +1,73 @@
+# =============================================================================
+#  Imagen de la API (versión con buenas prácticas)
+# =============================================================================
+#  Mismo resultado que el Dockerfile de al lado, pero aplicando lo que harías
+#  en un proyecto real: construcción en varias etapas, imagen final sin
+#  herramientas de compilación y un usuario sin privilegios.
+#
+#  Construir esta versión, desde la carpeta api/:
+#      docker build -f Dockerfile.optimizado -t blog-api:opt .
+#
+#  Y luego compara el tamaño de las dos:
+#      docker images blog-api
+# =============================================================================
+
+
+# ---------- Etapa 1: construir el entorno virtual ----------
+# El "AS constructor" le pone nombre a la etapa para poder referirnos a ella
+# más abajo. Todo lo que pase aquí (incluido el binario de uv) se queda en esta
+# etapa y NO acaba en la imagen final.
+FROM python:3.14.6-alpine3.24 AS constructor
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.29 /uv /bin/uv
+
+WORKDIR /app
+
+# UV_COMPILE_BYTECODE=1 precompila los .pyc durante la construcción. Cuesta unos
+#   segundos aquí, pero el contenedor arranca más rápido cada vez que se levanta,
+#   que es lo que de verdad importa en producción.
+# UV_LINK_MODE=copy evita los avisos de uv al no poder usar enlaces duros entre
+#   la caché y el destino cuando están en sistemas de archivos distintos.
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --locked --no-dev --no-install-project
+
+
+# ---------- Etapa 2: imagen final ----------
+# Empezamos otra vez desde la imagen base limpia. Aquí no hay uv, ni caché de
+# paquetes, ni nada que sirviera solo para construir.
+FROM python:3.14.6-alpine3.24 AS runtime
+
+# Usuario sin privilegios. Por defecto los contenedores corren como root, y si
+# alguien encuentra un fallo en la aplicación, lo hace siendo administrador
+# dentro del contenedor. Con un usuario normal, el daño posible es mucho menor.
+# Creamos el usuario ANTES de copiar para poder asignarle los archivos de una vez.
+RUN addgroup -S api && adduser -S api -G api
+
+WORKDIR /app
+
+# Nos traemos el entorno virtual ya montado de la etapa anterior.
+# --chown deja los archivos a nombre del usuario "api" en la misma operación:
+# hacerlo después con un RUN chown duplicaría el peso de la capa.
+COPY --from=constructor --chown=api:api /app/.venv /app/.venv
+COPY --chown=api:api main.py .
+
+ENV PATH="/app/.venv/bin:$PATH"
+
+# A partir de aquí, todo lo que se ejecute será con este usuario.
+USER api
+
+EXPOSE 8000
+
+# HEALTHCHECK dentro de la imagen: así la comprobación viaja con ella y funciona
+# aunque se lance sin Compose. En el docker-compose.yml definimos otro igual para
+# la versión didáctica, que no lo trae.
+# Usamos urllib de la librería estándar porque la imagen de Python sobre Alpine
+# no incluye curl, y no vale la pena instalarlo solo para esto.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

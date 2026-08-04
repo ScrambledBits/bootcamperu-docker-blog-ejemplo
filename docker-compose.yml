@@ -1,0 +1,171 @@
+# =============================================================================
+#  Blog en tres servicios · Bootcamp DevOps Bootcamperu
+# =============================================================================
+#  Un Dockerfile describe UNA imagen. Este archivo describe una APLICACIÓN
+#  ENTERA: qué piezas la forman, cómo se comunican y en qué orden arrancan.
+#
+#      navegador → ui (Caddy) → api (FastAPI) → db (PostgreSQL)
+#
+#  Levantar todo:      docker compose up --build
+#  Ver los registros:  docker compose logs -f
+#  Parar:              docker compose down
+#  Parar y borrar los datos: docker compose down -v
+#
+#  Compose crea automáticamente una red privada para estos tres servicios. Ahí
+#  dentro cada uno responde por su nombre ("db", "api", "ui"), sin IPs. Por eso
+#  la API se conecta a "db:5432" y Caddy reenvía a "api:8000".
+# =============================================================================
+
+services:
+  # ===========================================================================
+  #  1. db · La base de datos
+  # ===========================================================================
+  db:
+    # Imagen fijada por digest (el sha256), que es la forma más estricta de
+    # fijar una versión: "postgres:18" podría apuntar mañana a otra compilación,
+    # pero un digest identifica unos bytes concretos para siempre.
+    image: postgres@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+
+    environment:
+      # La imagen de Postgres lee estas tres variables la primera vez que
+      # arranca y crea con ellas el usuario y la base de datos.
+      #
+      # Una contraseña escrita aquí está bien para una clase, pero en un
+      # proyecto real iría en un archivo .env fuera del control de versiones, o
+      # mejor aún en un gestor de secretos.
+      POSTGRES_USER: bootcamperu
+      POSTGRES_PASSWORD: mipassword1234
+      POSTGRES_DB: bootcamperu
+
+    volumes:
+      # ---- Dónde viven los datos ----
+      # Un contenedor es desechable; su disco desaparece con él. El volumen con
+      # nombre "db_data" vive aparte y sobrevive a docker compose down.
+      #
+      # Ojo con la ruta, que cambió hace poco: PostgreSQL 18 guarda los datos en
+      # /var/lib/postgresql/18/docker, no en /var/lib/postgresql/data como en
+      # las versiones anteriores. Montamos la carpeta padre, que es justo la que
+      # la imagen declara como volumen. Si copias el clásico
+      # "db_data:/var/lib/postgresql/data" de un tutorial viejo, aquí ya NO
+      # funciona.
+      - db_data:/var/lib/postgresql
+
+      # ---- El esquema inicial ----
+      # Todo lo que haya en esta carpeta se ejecuta la primera vez que arranca
+      # la base (y solo esa vez). Así la tabla existe antes de que la API haga
+      # su primera consulta, sin necesidad de migraciones.
+      # ":ro" = solo lectura: el contenedor no tiene por qué modificar nuestros
+      # scripts.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      # ---- El detalle más importante de todo el archivo ----
+      #
+      # Arrancar no es lo mismo que estar listo. Al crear la base por primera
+      # vez, Postgres levanta un servidor TEMPORAL para ejecutar los scripts de
+      # /docker-entrypoint-initdb.d, y ese servidor temporal escucha SOLO en el
+      # socket de Unix, no por TCP.
+      #
+      # Por eso el "-h 127.0.0.1" no es decorativo. Sin él, pg_isready
+      # preguntaría por el socket, el servidor temporal contestaría "acepto
+      # conexiones" y Docker daría la base por lista cuando el esquema todavía
+      # se está creando. La API arrancaría antes de tiempo y fallaría.
+      #
+      # Al forzar TCP solo obtenemos respuesta cuando el servidor DEFINITIVO
+      # está en pie, es decir, cuando 01-esquema.sql ya ha terminado.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U bootcamperu -d bootcamperu"]
+      interval: 2s # cada cuánto se repite la comprobación
+      timeout: 3s # cuánto esperamos a que conteste
+      retries: 15 # cuántos fallos seguidos toleramos antes de marcarla "unhealthy"
+      start_period: 5s # margen inicial: los fallos aquí no cuentan para retries
+
+  # ===========================================================================
+  #  2. api · El backend
+  # ===========================================================================
+  api:
+    build:
+      # El contexto es ./api, así que dentro del Dockerfile las rutas son
+      # relativas a esa carpeta y su .dockerignore es el que manda.
+      context: ./api
+      dockerfile: Dockerfile
+      # ¿Quieres probar la versión con buenas prácticas? Cambia la línea de
+      # arriba por esta y vuelve a construir:
+      # dockerfile: Dockerfile.optimizado
+
+    environment:
+      # "db" es el nombre del servicio, y funciona como nombre de máquina dentro
+      # de la red de Compose. El puerto 5432 es el interno del contenedor: no
+      # hace falta publicarlo para que la API llegue.
+      DATABASE_URL: postgres://bootcamperu:mipassword1234@db:5432/bootcamperu
+
+    depends_on:
+      db:
+        # Sin "condition", depends_on solo espera a que el contenedor ARRANQUE,
+        # que es prácticamente inmediato y no sirve de nada aquí.
+        # Con service_healthy esperamos a que el healthcheck de arriba pase.
+        condition: service_healthy
+
+    healthcheck:
+      # Usamos /health, que no toca la base de datos a propósito (mira el
+      # comentario en main.py). urllib viene con Python; la imagen de Alpine no
+      # trae curl y no merece la pena instalarlo solo para esto.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+    # No publicamos ningún puerto: la API solo se usa desde dentro de la red, a
+    # través de Caddy. Menos superficie expuesta.
+    # ¿Quieres llamarla directamente con curl o ver /docs? Descomenta esto:
+    # ports:
+    #   - "9987:8000"
+    #
+    # También puedes alcanzarla sin publicar nada, desde otro contenedor:
+    #   docker compose exec ui wget -qO- http://api:8000/health
+
+  # ===========================================================================
+  #  3. ui · La interfaz
+  # ===========================================================================
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+      # Versión con buenas prácticas (usuario sin privilegios, puerto 8080).
+      # Si la activas, cambia también el puerto de abajo a "9988:8080".
+      # dockerfile: Dockerfile.optimizado
+
+    ports:
+      # "9988:80" significa puerto 9988 de TU máquina → puerto 80 del contenedor.
+      # Este es el único servicio accesible desde fuera: es la puerta de entrada.
+      - "9988:80"
+
+    depends_on:
+      api:
+        # La cadena completa queda: db sana → api sana → ui.
+        # Cuando Compose dice que ui ha arrancado, todo lo de detrás funciona.
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+# =============================================================================
+#  Volúmenes
+# =============================================================================
+volumes:
+  # Un volumen con nombre lo gestiona Docker por nosotros. Comandos útiles:
+  #   docker volume ls
+  #   docker volume inspect api_example_db_data
+  #
+  # Solo se borra si lo pides expresamente con "docker compose down -v".
+  db_data:

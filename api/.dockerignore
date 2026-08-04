@@ -1,0 +1,32 @@
+# Todo lo que NO debe viajar al contexto de construcción.
+#
+# Antes de construir, Docker empaqueta la carpeta entera y se la manda al motor.
+# Ese paquete es el "contexto". Si dentro va el entorno virtual local (que aquí
+# pesa cientos de megas), cada "docker build" lo copia entero para nada: la
+# imagen instala sus propias dependencias con uv en su interior.
+#
+# Comprueba el efecto tú mismo: la primera línea de la salida de "docker build"
+# dice cuánto pesa el contexto que se ha transferido.
+
+# Entorno virtual local: la imagen crea el suyo
+.venv/
+
+# Caché de Python
+__pycache__/
+*.py[oc]
+
+# Artefactos de empaquetado
+build/
+dist/
+wheels/
+*.egg-info
+
+# El propio Dockerfile no hace falta dentro de la imagen
+Dockerfile
+Dockerfile.optimizado
+.dockerignore
+
+# Repositorio git y basura del sistema
+.git/
+.gitignore
+.DS_Store

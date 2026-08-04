@@ -1,0 +1,167 @@
+<!doctype html>
+<!--
+  =============================================================================
+   Interfaz del blog
+  =============================================================================
+   HTML, CSS y JavaScript a pelo, sin frameworks ni compilación. En un ejemplo
+   de Docker eso es una ventaja: no hay npm install, ni node_modules, ni carpeta
+   dist. Lo que escribes es exactamente lo que Caddy sirve.
+
+   Esta página nunca habla con PostgreSQL. Le pide los datos a la API, y de eso
+   se encarga app.js.
+  =============================================================================
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blog · Bootcamperu</title>
+    <meta
+      name="description"
+      content="Ejemplo de tres servicios con Docker Compose: interfaz, API y base de datos."
+    />
+
+    <!-- El icono del logo, servido por Caddy como cualquier otro archivo -->
+    <link rel="icon" type="image/svg+xml" href="/logo-icon.svg" />
+    <link rel="stylesheet" href="/estilos.css" />
+  </head>
+
+  <body>
+    <!-- ===================== Cabecera ===================== -->
+    <header class="cabecera">
+      <div class="cabecera__marca">
+        <!--
+          width y height son las medidas reales del SVG. No lo dibujan a ese
+          tamaño (de eso se encarga el CSS), pero le dicen al navegador la
+          proporción por adelantado para que reserve el hueco y la página no
+          pegue un salto cuando termina de cargar el logo.
+        -->
+        <img
+          class="cabecera__logo"
+          src="/logo-full.svg"
+          alt="Bootcamperu"
+          width="654"
+          height="118"
+        />
+        <div>
+          <p class="cabecera__eyebrow">Bootcamperu · DevOps</p>
+          <h1 class="cabecera__titulo">Blog en tres contenedores</h1>
+        </div>
+      </div>
+
+      <!-- Diagrama de la arquitectura, para tenerla siempre a la vista -->
+      <nav class="cadena" aria-label="Arquitectura de la aplicación">
+        <span class="cadena__nodo cadena__nodo--activo">navegador</span>
+        <span class="cadena__flecha" aria-hidden="true">→</span>
+        <span class="cadena__nodo cadena__nodo--activo">ui · caddy</span>
+        <span class="cadena__flecha" aria-hidden="true">→</span>
+        <span class="cadena__nodo" id="nodo-api">api · fastapi</span>
+        <span class="cadena__flecha" aria-hidden="true">→</span>
+        <span class="cadena__nodo" id="nodo-db">db · postgres</span>
+      </nav>
+    </header>
+
+    <!--
+      Aviso de errores. Empieza oculto y app.js lo muestra si la API no
+      responde. Con role="alert" los lectores de pantalla lo anuncian solos.
+    -->
+    <div class="aviso" id="aviso" role="alert" hidden></div>
+
+    <main class="contenido">
+      <!-- ===================== Columna izquierda ===================== -->
+      <aside class="panel">
+        <section class="tarjeta">
+          <h2 class="tarjeta__titulo">Nueva entrada</h2>
+
+          <!--
+            Un <form> de verdad, no un puñado de divs. Así el navegador nos da
+            gratis la validación de "required", el envío con Enter y el
+            comportamiento correcto con teclado y lectores de pantalla.
+          -->
+          <form id="formulario" class="formulario" novalidate>
+            <label class="campo">
+              <span class="campo__etiqueta">Título</span>
+              <input
+                class="campo__control"
+                type="text"
+                name="title"
+                id="title"
+                maxlength="200"
+                placeholder="¿De qué quieres escribir?"
+                required
+                autocomplete="off"
+              />
+            </label>
+
+            <label class="campo">
+              <span class="campo__etiqueta">Contenido</span>
+              <textarea
+                class="campo__control campo__control--area"
+                name="content"
+                id="content"
+                rows="7"
+                maxlength="5000"
+                placeholder="Escribe aquí tu entrada..."
+                required
+              ></textarea>
+            </label>
+
+            <button class="boton" type="submit" id="boton-publicar">
+              Publicar
+            </button>
+
+            <!-- aria-live hace que el mensaje se lea en voz alta al cambiar -->
+            <p class="formulario__estado" id="estado-formulario" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <!-- ===================== Estado de los servicios ===================== -->
+        <section class="tarjeta tarjeta--estado">
+          <h2 class="tarjeta__titulo tarjeta__titulo--pequeno">Estado</h2>
+          <p class="estado__ayuda">
+            Se consulta cada 10 segundos a <code>/api/health/db</code>
+          </p>
+
+          <ul class="estado__lista">
+            <li class="estado__fila">
+              <span class="punto punto--esperando" id="punto-api"></span>
+              <span class="estado__nombre">api</span>
+              <span class="estado__valor" id="valor-api">comprobando…</span>
+            </li>
+            <li class="estado__fila">
+              <span class="punto punto--esperando" id="punto-db"></span>
+              <span class="estado__nombre">db</span>
+              <span class="estado__valor" id="valor-db">comprobando…</span>
+            </li>
+          </ul>
+        </section>
+      </aside>
+
+      <!-- ===================== Columna derecha ===================== -->
+      <section class="entradas">
+        <div class="entradas__cabecera">
+          <h2 class="entradas__titulo">
+            Entradas <span class="entradas__cuenta" id="cuenta">·</span>
+          </h2>
+          <button class="boton boton--suave" type="button" id="boton-recargar">
+            Recargar
+          </button>
+        </div>
+
+        <!-- app.js rellena esta lista; el contenido inicial es solo el aviso de carga -->
+        <div id="lista" class="lista">
+          <p class="lista__cargando">Cargando entradas…</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pie">
+      <p>
+        Bootcamperu · Bootcamp DevOps — ejemplo de Docker Compose con tres
+        servicios
+      </p>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
